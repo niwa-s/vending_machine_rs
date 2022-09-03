@@ -96,13 +96,18 @@ mod coin {
         ALLOWED_VALUES.contains(&value)
     }
     impl Coin {
-        pub fn new(value: u32) -> Self {
-            // TODO: error handling
-            if validate(value) {}
-            Self { value }
-        }
         pub fn value(&self) -> u32 {
             self.value
+        }
+    }
+    impl TryFrom<u32> for Coin {
+        type Error = anyhow::Error;
+        fn try_from(value: u32) -> Result<Self, Self::Error> {
+            if validate(value) {
+                Ok(Self { value })
+            } else {
+                Err(anyhow::anyhow!("Invalid coin value: {}", value))
+            }
         }
     }
     #[derive(Default)]
@@ -137,7 +142,7 @@ mod coin {
             for &coin_value in ALLOWED_VALUES.iter().rev() {
                 let count = value / coin_value;
                 value -= count * coin_value;
-                coins.extend(vec![Coin::new(coin_value); count as usize]);
+                coins.extend(vec![Coin::try_from(coin_value).unwrap(); count as usize]);
             }
             assert!(value == 0);
             Coins(coins)
@@ -169,7 +174,7 @@ mod test {
     #[test]
     fn buy_cola() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         let beverage = machine.press_button(0).unwrap();
         assert_eq!(beverage, "Cola");
@@ -184,7 +189,9 @@ mod test {
     #[test]
     fn buy_cola_with_over_coin() {
         let mut machine = VendingMachine::new();
-        let coins = [10, 100, 500].iter().map(|&value| Coin::new(value));
+        let coins = [10, 100, 500]
+            .iter()
+            .map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
@@ -195,7 +202,7 @@ mod test {
     #[test]
     fn buy_woo_long_tea() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         let beverage = machine.press_button(1).unwrap();
         assert_eq!(beverage, "Woo long tea");
@@ -203,7 +210,7 @@ mod test {
     #[test]
     fn buy_ilohas() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         let beverage = machine.press_button(2).unwrap();
         assert_eq!(beverage, "Ilohas");
@@ -211,7 +218,9 @@ mod test {
     #[test]
     fn buy_red_bull() {
         let mut machine = VendingMachine::new();
-        let coins = [100, 100].iter().map(|&value| Coin::new(value));
+        let coins = [100, 100]
+            .iter()
+            .map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(3).unwrap();
@@ -220,7 +229,7 @@ mod test {
     #[test]
     fn use_invalid_button_id() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         let press_button_result = machine.press_button(4);
         assert!(press_button_result.is_err());
@@ -230,14 +239,14 @@ mod test {
     #[test]
     fn button_is_shining_with_enough_coin() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         assert!(machine.is_button_shining(0).unwrap());
     }
     #[test]
     fn button_is_not_shining_without_enough_coin() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(10));
+        machine.insert_coin(Coin::try_from(10).unwrap());
 
         assert!(!machine.is_button_shining(0).unwrap());
     }
@@ -246,7 +255,7 @@ mod test {
     #[test]
     fn buy_cola_for_10_yen_coin() {
         let mut machine = VendingMachine::new();
-        let coins = [10; 10].iter().map(|&value| Coin::new(value));
+        let coins = [10; 10].iter().map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
@@ -255,7 +264,7 @@ mod test {
     #[test]
     fn buy_cola_for_50_yen_coin() {
         let mut machine = VendingMachine::new();
-        let coins = [50, 50].iter().map(|&value| Coin::new(value));
+        let coins = [50, 50].iter().map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
@@ -266,7 +275,9 @@ mod test {
     #[test]
     fn buy_cola_for_150_yen() {
         let mut machine = VendingMachine::new();
-        let coins = [50, 100].iter().map(|&value| Coin::new(value));
+        let coins = [50, 100]
+            .iter()
+            .map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
@@ -276,7 +287,9 @@ mod test {
     #[test]
     fn buy_woo_long_tea_for_120_yen() {
         let mut machine = VendingMachine::new();
-        let coins = [10, 10, 100].iter().map(|&value| Coin::new(value));
+        let coins = [10, 10, 100]
+            .iter()
+            .map(|&value| Coin::try_from(value).unwrap());
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(1).unwrap();
@@ -287,7 +300,7 @@ mod test {
     #[test]
     fn return_change_test() {
         let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::new(100));
+        machine.insert_coin(Coin::try_from(100).unwrap());
 
         let change = machine.return_coins().sum();
         assert_eq!(change, 100);
