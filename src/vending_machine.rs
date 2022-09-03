@@ -187,11 +187,7 @@ mod test {
     #[test]
     fn buy_cola_with_over_coin() {
         let mut machine = VendingMachine::new();
-        let coins: Coins = [10, 100, 500]
-            .iter()
-            .map(|&value| Coin::new(value))
-            .collect::<Vec<_>>()
-            .into();
+        let coins = [10, 100, 500].iter().map(|&value| Coin::new(value));
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
