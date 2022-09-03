@@ -1,1 +1,3 @@
 # vending_machine_rs
+[こちら](https://twitter.com/Panda_Program/status/1565660477505814528)のツイートを見て面白そうだと思ったので作成。
+自販機で買うことのできる飲み物のデータをどう管理すればいいかわからなかった...
