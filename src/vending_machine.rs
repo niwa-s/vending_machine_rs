@@ -39,7 +39,7 @@ impl VendingMachine {
         self.coins.push(coin);
     }
 
-    pub fn insert_coins(&mut self, coins: impl Iterator<Item = Coin>) {
+    pub fn insert_coins(&mut self, coins: impl IntoIterator<Item = Coin>) {
         self.coins.extend(coins);
     }
 
@@ -97,6 +97,7 @@ mod coin {
     }
     impl Coin {
         pub fn new(value: u32) -> Self {
+            // TODO: error handling
             if validate(value) {}
             Self { value }
         }
@@ -119,7 +120,10 @@ mod coin {
         pub fn iter(&self) -> std::slice::Iter<Coin> {
             self.0.iter()
         }
-        pub fn extend(&mut self, coins: impl Iterator<Item = Coin>) {
+        pub fn extend<I>(&mut self, coins: I)
+        where
+            I: IntoIterator<Item = Coin>,
+        {
             self.0.extend(coins);
         }
     }
@@ -140,6 +144,18 @@ mod coin {
             }
             assert!(value == 0);
             Coins(coins)
+        }
+    }
+    impl IntoIterator for Coins {
+        type Item = Coin;
+        type IntoIter = std::vec::IntoIter<Coin>;
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.into_iter()
+        }
+    }
+    impl From<Vec<Coin>> for Coins {
+        fn from(coins: Vec<Coin>) -> Self {
+            Self(coins)
         }
     }
     impl From<Coins> for Vec<Coin> {
@@ -171,7 +187,11 @@ mod test {
     #[test]
     fn buy_cola_with_over_coin() {
         let mut machine = VendingMachine::new();
-        let coins = [10, 100, 500].iter().map(|&value| Coin::new(value));
+        let coins: Coins = [10, 100, 500]
+            .iter()
+            .map(|&value| Coin::new(value))
+            .collect::<Vec<_>>()
+            .into();
         machine.insert_coins(coins);
 
         let beverage = machine.press_button(0).unwrap();
