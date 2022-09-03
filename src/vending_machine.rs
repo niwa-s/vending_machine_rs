@@ -87,7 +87,7 @@ impl VendingMachine {
 mod coin {
     use std::ops::Deref;
 
-    const ALLOWED_VALUES: &[u32; 6] = &[1, 5, 10, 50, 100, 500];
+    const ALLOWED_VALUES: &[u32; 4] = &[10, 50, 100, 500];
     #[derive(Debug, Clone, Copy)]
     pub struct Coin {
         value: u32,
@@ -255,7 +255,6 @@ mod test {
         let mut machine = VendingMachine::new();
         let coins = [50, 100].iter().map(|&value| Coin::new(value));
         machine.insert_coins(coins);
-
 
         let beverage = machine.press_button(0).unwrap();
         assert_eq!(beverage, "Cola");
