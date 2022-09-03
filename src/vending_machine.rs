@@ -1,4 +1,6 @@
+use crate::coin::{Coin, Coins};
 use anyhow::Result;
+
 #[derive(Debug, Clone, Copy)]
 struct Beverage {
     name: &'static str,
@@ -23,8 +25,7 @@ const BEVERAGE_LIST: &[Beverage; 4] = &[
     },
 ];
 
-pub use coin::{Coin, Coins};
-
+#[derive(Debug, Default)]
 pub struct VendingMachine {
     coins: Coins,
 }
@@ -43,7 +44,7 @@ impl VendingMachine {
         self.coins.extend(coins);
     }
 
-    fn press_button(&mut self, button_id: usize) -> Result<String> {
+    pub fn press_button(&mut self, button_id: usize) -> Result<String> {
         let beverage = *self.get_beverage_by_button_id(button_id)?;
         self.pay_with_coins(beverage.price)?;
         Ok(beverage.name.to_string())
@@ -81,228 +82,5 @@ impl VendingMachine {
 
     pub fn return_coins(&mut self) -> Coins {
         std::mem::take(&mut self.coins)
-    }
-}
-
-mod coin {
-    use std::ops::Deref;
-
-    const ALLOWED_VALUES: &[u32; 4] = &[10, 50, 100, 500];
-    #[derive(Debug, Clone, Copy)]
-    pub struct Coin {
-        value: u32,
-    }
-    fn validate(value: u32) -> bool {
-        ALLOWED_VALUES.contains(&value)
-    }
-    impl Coin {
-        pub fn value(&self) -> u32 {
-            self.value
-        }
-    }
-    impl TryFrom<u32> for Coin {
-        type Error = anyhow::Error;
-        fn try_from(value: u32) -> Result<Self, Self::Error> {
-            if validate(value) {
-                Ok(Self { value })
-            } else {
-                Err(anyhow::anyhow!("Invalid coin value: {}", value))
-            }
-        }
-    }
-    #[derive(Default)]
-    pub struct Coins(Vec<Coin>);
-    impl Coins {
-        pub fn new() -> Self {
-            Self(Vec::new())
-        }
-        pub fn sum(&self) -> u32 {
-            self.0.iter().map(|coin| coin.value()).sum()
-        }
-        pub fn push(&mut self, coin: Coin) {
-            self.0.push(coin);
-        }
-        pub fn iter(&self) -> std::slice::Iter<Coin> {
-            self.0.iter()
-        }
-        pub fn extend(&mut self, coins: impl IntoIterator<Item = Coin>) {
-            self.0.extend(coins);
-        }
-    }
-    impl Deref for Coins {
-        type Target = Vec<Coin>;
-        fn deref(&self) -> &Self::Target {
-            &self.0
-        }
-    }
-    impl From<u32> for Coins {
-        fn from(value: u32) -> Self {
-            let mut coins = vec![];
-            let mut value = value;
-            for &coin_value in ALLOWED_VALUES.iter().rev() {
-                let count = value / coin_value;
-                value -= count * coin_value;
-                coins.extend(vec![Coin::try_from(coin_value).unwrap(); count as usize]);
-            }
-            assert!(value == 0);
-            Coins(coins)
-        }
-    }
-    impl IntoIterator for Coins {
-        type Item = Coin;
-        type IntoIter = std::vec::IntoIter<Coin>;
-        fn into_iter(self) -> Self::IntoIter {
-            self.0.into_iter()
-        }
-    }
-    impl From<Vec<Coin>> for Coins {
-        fn from(coins: Vec<Coin>) -> Self {
-            Self(coins)
-        }
-    }
-    impl From<Coins> for Vec<Coin> {
-        fn from(coins: Coins) -> Self {
-            coins.0
-        }
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    // コーラを購入できるか・コインがたりない場合は購入できないか・多めに投入しても購入してもらえるか
-    #[test]
-    fn buy_cola() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        let beverage = machine.press_button(0).unwrap();
-        assert_eq!(beverage, "Cola");
-    }
-    #[test]
-    fn buy_cola_without_enough_coin() {
-        let mut machine = VendingMachine::new();
-
-        let press_button_result = machine.press_button(0);
-        assert!(press_button_result.is_err());
-    }
-    #[test]
-    fn buy_cola_with_over_coin() {
-        let mut machine = VendingMachine::new();
-        let coins = [10, 100, 500]
-            .iter()
-            .map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(0).unwrap();
-        assert_eq!(beverage, "Cola");
-    }
-
-    // コーラ以外も購入できるかテスト
-    #[test]
-    fn buy_woo_long_tea() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        let beverage = machine.press_button(1).unwrap();
-        assert_eq!(beverage, "Woo long tea");
-    }
-    #[test]
-    fn buy_ilohas() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        let beverage = machine.press_button(2).unwrap();
-        assert_eq!(beverage, "Ilohas");
-    }
-    #[test]
-    fn buy_red_bull() {
-        let mut machine = VendingMachine::new();
-        let coins = [100, 100]
-            .iter()
-            .map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(3).unwrap();
-        assert_eq!(beverage, "Red Bull");
-    }
-    #[test]
-    fn use_invalid_button_id() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        let press_button_result = machine.press_button(4);
-        assert!(press_button_result.is_err());
-    }
-
-    // 購入ボタンが光っているかどうかのテスト
-    #[test]
-    fn button_is_shining_with_enough_coin() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        assert!(machine.is_button_shining(0).unwrap());
-    }
-    #[test]
-    fn button_is_not_shining_without_enough_coin() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(10).unwrap());
-
-        assert!(!machine.is_button_shining(0).unwrap());
-    }
-
-    // 小銭で購入できるかテスト
-    #[test]
-    fn buy_cola_for_10_yen_coin() {
-        let mut machine = VendingMachine::new();
-        let coins = [10; 10].iter().map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(0).unwrap();
-        assert_eq!(beverage, "Cola");
-    }
-    #[test]
-    fn buy_cola_for_50_yen_coin() {
-        let mut machine = VendingMachine::new();
-        let coins = [50, 50].iter().map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(0).unwrap();
-        assert_eq!(beverage, "Cola");
-    }
-
-    // お釣りの金額が正しいかテスト
-    #[test]
-    fn buy_cola_for_150_yen() {
-        let mut machine = VendingMachine::new();
-        let coins = [50, 100]
-            .iter()
-            .map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(0).unwrap();
-        assert_eq!(beverage, "Cola");
-        assert_eq!(machine.return_coins().sum(), 50);
-    }
-    #[test]
-    fn buy_woo_long_tea_for_120_yen() {
-        let mut machine = VendingMachine::new();
-        let coins = [10, 10, 100]
-            .iter()
-            .map(|&value| Coin::try_from(value).unwrap());
-        machine.insert_coins(coins);
-
-        let beverage = machine.press_button(1).unwrap();
-        assert_eq!(beverage, "Woo long tea");
-        let change = machine.return_coins().sum();
-        assert_eq!(change, 20);
-    }
-    #[test]
-    fn return_change_test() {
-        let mut machine = VendingMachine::new();
-        machine.insert_coin(Coin::try_from(100).unwrap());
-
-        let change = machine.return_coins().sum();
-        assert_eq!(change, 100);
     }
 }
