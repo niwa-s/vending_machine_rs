@@ -120,10 +120,7 @@ mod coin {
         pub fn iter(&self) -> std::slice::Iter<Coin> {
             self.0.iter()
         }
-        pub fn extend<I>(&mut self, coins: I)
-        where
-            I: IntoIterator<Item = Coin>,
-        {
+        pub fn extend(&mut self, coins: impl IntoIterator<Item = Coin>) {
             self.0.extend(coins);
         }
     }
